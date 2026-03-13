@@ -1,3 +1,4 @@
+from tenacity import retry, wait_exponential, stop_after_attempt
 import logging
 from mem0 import Memory
 from config.config import GOOGLE_API_KEY
@@ -41,13 +42,19 @@ def get_memory_client():
         logger.error(f"❌ CRITICAL ERROR initializing Mem0: {e}")
         raise e
 
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3))
+def robust_memory_add(memory_client, user_input, user_id):
+    """Executes memory ingestion with automated retries for transient 503/429 errors."""
+    memory_client.add(user_input, user_id=user_id)
+
 def add_to_memory(user_id: str, user_input: str):
     memory = get_memory_client()
     try:
-        memory.add(user_input, user_id=user_id)
+        # Utilize the retry-wrapped execution function
+        robust_memory_add(memory, user_input, user_id)
         logger.info(f"✅ Memory processed for user: {user_id}")
     except Exception as e:
-        logger.error(f"❌ Error adding to memory: {e}")
+        logger.error(f"❌ Error adding to memory after retries exhausted: {e}")
 
 def get_user_context(user_id: str) -> str:
     memory = get_memory_client()
