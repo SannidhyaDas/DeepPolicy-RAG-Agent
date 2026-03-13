@@ -1,0 +1,49 @@
+# # Web Framework
+# streamlit==1.32.2
+
+# # LLM Orchestration (Modern LangChain)
+# langchain==0.1.13
+# langchain-core==0.1.33
+# langchain-community==0.0.29
+# langchain-google-genai==1.0.1
+# langchain-openai==0.1.1
+
+# # Vector Database (CPU version for Streamlit Cloud)
+# faiss-cpu==1.8.0
+
+# # Fast PDF Parsing
+# PyMuPDF==1.24.1
+
+# # Memory Management
+# mem0ai==0.0.12
+
+# # Web Search Fallback
+# duckduckgo-search==5.2.1
+
+# # Environment Variables (for local testing)
+# python-dotenv==1.0.1
+
+# Web Framework
+streamlit>=1.36.0
+
+# LLM Orchestration
+langchain
+langchain-core
+langchain-community
+langchain-google-genai
+
+# Vector Database (CPU version for Streamlit Cloud)
+faiss-cpu==1.8.0
+
+# Fast PDF Parsing
+PyMuPDF>=1.24.1
+
+# Memory Management
+mem0ai
+google-genai
+
+# Web Search Fallback
+duckduckgo-search
+
+# Environment Variables
+python-dotenv==1.0.1
