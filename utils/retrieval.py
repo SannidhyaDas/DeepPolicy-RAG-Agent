@@ -1,97 +1,68 @@
-# import logging
-# from langchain.prompts import PromptTemplate
-
-# from models.llm import get_llm
-# from utils.ingestion import build_or_load_retriever
-# from utils.web_search import search_web
-# from utils.memory_logic import get_user_context, add_to_memory
-
-# # Configure academic/systematic logging for tracking execution states
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-
-# import logging
-# # Use the modern langchain_core path
-# from langchain_core.prompts import PromptTemplate
-
-# from models.llm import get_llm
-# from utils.ingestion import build_or_load_retriever
-# from utils.web_search import search_web
-# from utils.memory_logic import get_user_context, add_to_memory
-
-# # Configure academic/systematic logging for tracking execution states
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-
+import os
+import hashlib
 import logging
 from langchain_core.prompts import PromptTemplate
 
 from models.llm import get_llm
 from utils.ingestion import build_or_load_retriever
-from utils.web_search import search_web
+from utils.web_search import search_web_with_citations
 from utils.memory_logic import get_user_context, add_to_memory
 
-# Configure academic/systematic logging for tracking execution states
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Primary Cache Dictionary (per user research parameters)
+RESPONSE_CACHE = {}
+
 def generate_response(query: str, mode: str, user_id: str = "default_user") -> str:
     """
-    Orchestrates the retrieval and generation pipeline.
-    
-    Workflow:
-    1. Instantiates the LLM and the Document Retriever.
-    2. Queries the local vector store (FAISS) using the Parent Document Retriever.
-    3. Evaluates retrieval yield; if insufficient, triggers the DuckDuckGo web search fallback.
-    4. Retrieves historical user context via Mem0.
-    5. Formulates a deterministic prompt incorporating context, memory, and the requested verbosity mode.
-    6. Executes the LLM inference and records the interaction payload to memory.
+    Orchestrates RAG generation with Hashlib Caching, strict Agentic Routing, and explicit citations.
     """
-    
-    # 1. Initialize Core Components
-    llm = get_llm(temperature=0.2)  # Low temperature to minimize hallucination variance
+    # 1. Evaluate Cache Status
+    cache_key = hashlib.md5(f"{query}_{mode}_{user_id}".encode()).hexdigest()
+    if cache_key in RESPONSE_CACHE:
+        logger.info(f"Using cached result for query hash: {cache_key}")
+        return RESPONSE_CACHE[cache_key]
+
+    # Initialize LLM with zero temperature for maximum determinism
+    llm = get_llm(temperature=0.0) 
     retriever = build_or_load_retriever()
 
-    # 2. Execute Internal Knowledge Retrieval
+    # 2. Retrieve Internal Document Context
     try:
-        # The invoke method replaces get_relevant_documents in modern LangChain
         retrieved_docs = retriever.invoke(query)
-        logger.info(f"Successfully retrieved {len(retrieved_docs)} parent documents from local FAISS index.")
     except Exception as e:
         logger.error(f"Vector store retrieval failure: {e}")
         retrieved_docs = []
 
-    # 3. Evaluate and Apply Web Search Fallback Condition
-    context_source = "Internal Documents"
-    if not retrieved_docs:
-        logger.info("Internal document yield is zero. Initiating DuckDuckGo fallback protocol.")
-        web_results = search_web(query)
-        context_text = web_results
-        context_source = "Web Search"
+    if retrieved_docs:
+        context_text = "\n\n---\n\n".join(
+            [f"Source Document: {os.path.basename(doc.metadata.get('source', 'Local Data'))}\nContent: {doc.page_content}" 
+             for doc in retrieved_docs]
+        )
     else:
-        # Aggregate retrieved parent document contents
-        context_text = "\n\n---\n\n".join([doc.page_content for doc in retrieved_docs])
+        context_text = "No internal documents available."
 
-    # 4. Fetch User Context Memory
     user_memory = get_user_context(user_id)
 
-    # 5. Determine Lexical Output Parameters
     if mode == "Concise":
-        style_instruction = "Provide a direct, one-sentence academic summation. Utilize bullet points strictly when enumerating discrete items."
+        style_instruction = "Provide a direct, one-sentence summation. Utilize bullet points strictly when enumerating discrete items."
     else:
-        style_instruction = "Provide a comprehensive, highly detailed academic exposition incorporating background context and analytical explanations."
+        style_instruction = "Provide a comprehensive, highly detailed exposition incorporating background context."
 
-    # 6. Construct the Deterministic Prompt Template
-    prompt_template = f"""You are an advanced internal Policy & Compliance Assistant.
+    # 3. Formulate Strict Routing Prompt
+    prompt_template = f"""You are an advanced internal Assistant.
     
     System Directives:
     {style_instruction}
-    Formulate your response strictly utilizing the provided context boundaries. If the target information is absent from the context, state "Information not available in current context" and refrain from predictive extrapolation.
+    1. Evaluate the Information Context. If the context does NOT explicitly contain the answer to the User Query, you MUST output ONLY the exact phrase: "TRIGGER_WEB_SEARCH". Do not guess or attempt to provide partial answers.
+    2. If the context DOES contain the answer, formulate your response utilizing ONLY the provided context boundaries.
+    3. MANDATORY: If utilizing internal documents, append your source at the end formatted exactly as: "SOURCES:\n1. [Document Name]".
     
     Extracted User Memory Context:
     {{memory}}
     
-    Information Context ({context_source}):
+    Information Context:
     {{context}}
     
     User Query:
@@ -99,24 +70,47 @@ def generate_response(query: str, mode: str, user_id: str = "default_user") -> s
     
     Final Answer:"""
 
-    prompt = PromptTemplate(
-        template=prompt_template,
-        input_variables=["memory", "context", "query"]
-    )
+    prompt = PromptTemplate(template=prompt_template, input_variables=["memory", "context", "query"])
 
-    # 7. Execute LLM Inference
     try:
+        # First Generation Cycle (Internal PDF Evaluation)
         formatted_prompt = prompt.format(memory=user_memory, context=context_text, query=query)
-        # In modern LangChain, invoke is preferred over __call__ or predict
         response = llm.invoke(formatted_prompt)
-        final_answer = response.content
+        final_answer = response.content.strip()
         
-        # 8. Append Interaction to Persistent Memory State
+        # 4. Agentic Intercept & Fallback Execution
+        if "TRIGGER_WEB_SEARCH" in final_answer:
+            logger.info("Internal context insufficient. Triggering secondary Web Search retrieval loop.")
+            
+            web_context, web_citations = search_web_with_citations(query)
+            
+            fallback_prompt_template = f"""You are an advanced Assistant.
+            System Directives:
+            {style_instruction}
+            Answer the user query based ONLY on the Web Search Results Context provided. Do not append manual citations; they will be handled programmatically.
+            
+            Web Search Results Context:
+            {{context}}
+            
+            User Query:
+            {{query}}
+            
+            Final Answer:"""
+            
+            fallback_prompt = PromptTemplate(template=fallback_prompt_template, input_variables=["context", "query"])
+            fallback_response = llm.invoke(fallback_prompt.format(context=web_context, query=query))
+            
+            # Programmatically append the formatted web citations
+            final_answer = fallback_response.content + web_citations
+
+        # 5. Persist State and Commit to Cache
         memory_payload = f"Query: {query} | Response Summary: {final_answer[:100]}..."
         add_to_memory(user_id, memory_payload)
+        
+        RESPONSE_CACHE[cache_key] = final_answer
         
         return final_answer
         
     except Exception as e:
         logger.error(f"LLM inference execution failed: {e}")
-        return "System Error: The generation module encountered a critical failure. Please review the application logs."
+        return "System Error: The generation module encountered a critical failure."
