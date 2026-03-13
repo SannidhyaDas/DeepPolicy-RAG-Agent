@@ -49,9 +49,14 @@ def semantic_security_gate(query: str) -> bool:
             api_key=GROQ_API_KEY
         )
         
-        guard_prompt = f"""You are an enterprise security classifier. 
-        Analyze the following user input. Does it pertain to company policy, compliance, internal operations, business research, or general professional inquiries?
-        Output strictly the word 'SAFE' if relevant and safe, or 'BLOCK' if off-topic, malicious, toxic, or inappropriate. Do not output any other text.
+        guard_prompt = f"""You are a strict Enterprise Security Classifier for a Policy & Compliance Assistant. 
+        Analyze the User Input and determine if it is explicitly related to corporate domain knowledge.
+
+        ALLOWED TOPICS: Employee policies, compliance regulations, HR protocols, enterprise workflows, internal business roles.
+        FORBIDDEN TOPICS: Basic math (e.g., 2+2), general knowledge, chit-chat, coding requests, trivia, weather, external news.
+
+        Output strictly the word 'SAFE' if the query is an Allowed Topic. 
+        Output strictly the word 'BLOCK' if the query is a Forbidden Topic, off-topic, or irrelevant to enterprise compliance. Do not output any other text.
         
         User Input: {query}
         Classification:"""
@@ -59,15 +64,15 @@ def semantic_security_gate(query: str) -> bool:
         response = guard_llm.invoke(guard_prompt)
         classification = response.content.strip().upper()
         
+        # Strict evaluation
         if "BLOCK" in classification:
-            logger.warning("Security Alert: Semantic gate triggered BLOCK classification.")
+            logger.warning(f"Security Alert: Semantic gate blocked off-topic query: '{query}'")
             return False
         return True
     except Exception as e:
         logger.error(f"Semantic Security Gate Failure: {e}")
         # Failsafe open to prevent total system lockout during transient API errors
         return True
-
 
 ## PRIMARY ORCHESTRATOR
 
