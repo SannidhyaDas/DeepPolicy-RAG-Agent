@@ -15,7 +15,7 @@ def get_memory_client():
         "llm": {
             "provider": "gemini",
             "config": {
-                "model": "gemini-2.5-flash",
+                "model": "gemini-2.5-flash-lite",
                 "api_key": GOOGLE_API_KEY
             }
         },

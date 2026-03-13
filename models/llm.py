@@ -12,11 +12,11 @@ def get_llm(temperature: float = 0.3):
     """
     try:
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash", 
+            model="gemini-2.5-flash-lite", 
             temperature=temperature,
             google_api_key=GOOGLE_API_KEY
         )
-        logger.info(f"✅ LLM (gemini-2.5-flash) initialized successfully with temp={temperature}.")
+        logger.info(f"✅ LLM (gemini-2.5-flash-lite) initialized successfully with temp={temperature}.")
         return llm
     except Exception as e:
         logger.error(f"❌ CRITICAL ERROR initializing LLM: {e}")
