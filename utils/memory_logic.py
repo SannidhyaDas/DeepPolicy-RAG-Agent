@@ -8,10 +8,16 @@ logger = logging.getLogger(__name__)
 def get_memory_client():
     """
     Initializes the Mem0 memory client.
-    Configured to use Gemini for BOTH the LLM and the Embedder 
-    to completely avoid OpenAI dependencies.
+    Explicitly defines a 768-dimension vector collection to align with Gemini constraints.
     """
     config = {
+        "vector_store": {
+            "provider": "qdrant",
+            "config": {
+                "collection_name": "gemini_memory_768",
+                "embedding_model_dims": 768
+            }
+        },
         "llm": {
             "provider": "gemini",
             "config": {
@@ -36,9 +42,6 @@ def get_memory_client():
         raise e
 
 def add_to_memory(user_id: str, user_input: str):
-    """
-    Passes the user's message to Mem0.
-    """
     memory = get_memory_client()
     try:
         memory.add(user_input, user_id=user_id)
@@ -46,33 +49,7 @@ def add_to_memory(user_id: str, user_input: str):
     except Exception as e:
         logger.error(f"❌ Error adding to memory: {e}")
 
-# def get_user_context(user_id: str) -> str:
-#     """
-#     Retrieves all remembered facts for a specific user.
-#     """
-#     memory = get_memory_client()
-#     try:
-#         memories = memory.get_all(user_id=user_id)
-        
-#         if not memories:
-#             return "No specific user preferences found."
-        
-#         context = "User Preferences and History:\n"
-#         for m in memories:
-#             mem_text = m.get('memory', '')
-#             if mem_text:
-#                 context += f"- {mem_text}\n"
-                
-#         return context
-#     except Exception as e:
-#         logger.error(f"❌ Error retrieving memory: {e}")
-#         return "Could not retrieve user preferences due to an error."
-
 def get_user_context(user_id: str) -> str:
-    """
-    Retrieves all remembered facts for a specific user.
-    Bulletproofed to handle different Mem0 version output formats.
-    """
     memory = get_memory_client()
     try:
         memories = memory.get_all(user_id=user_id)
@@ -82,10 +59,9 @@ def get_user_context(user_id: str) -> str:
         
         context = "User Preferences and History:\n"
         for m in memories:
-            # Safely handle both Dictionary and String formats
             if isinstance(m, dict):
                 mem_text = m.get('memory', '')
-            elif hasattr(m, 'memory'): # Handle custom object types
+            elif hasattr(m, 'memory'):
                 mem_text = getattr(m, 'memory', '')
             else:
                 mem_text = str(m)
