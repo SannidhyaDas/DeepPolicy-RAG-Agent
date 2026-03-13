@@ -30,6 +30,8 @@ streamlit>=1.36.0
 langchain
 langchain-core
 langchain-community
+langchain-classic
+langchain-text-splitters
 langchain-google-genai
 
 # Vector Database (CPU version for Streamlit Cloud)

@@ -1,5 +1,30 @@
+# import logging
+# from langchain.prompts import PromptTemplate
+
+# from models.llm import get_llm
+# from utils.ingestion import build_or_load_retriever
+# from utils.web_search import search_web
+# from utils.memory_logic import get_user_context, add_to_memory
+
+# # Configure academic/systematic logging for tracking execution states
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
+# import logging
+# # Use the modern langchain_core path
+# from langchain_core.prompts import PromptTemplate
+
+# from models.llm import get_llm
+# from utils.ingestion import build_or_load_retriever
+# from utils.web_search import search_web
+# from utils.memory_logic import get_user_context, add_to_memory
+
+# # Configure academic/systematic logging for tracking execution states
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
 import logging
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 from models.llm import get_llm
 from utils.ingestion import build_or_load_retriever
