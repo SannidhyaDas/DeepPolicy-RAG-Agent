@@ -28,5 +28,6 @@ def get_api_key(key_name: str) -> str:
 
 # Centralized constants
 GOOGLE_API_KEY = get_api_key("GOOGLE_API_KEY")
+GROQ_API_KEY = get_api_key("GROQ_API_KEY")
 TAVILY_API_KEY = get_api_key("TAVILY_API_KEY")
 # OPENAI_API_KEY = get_api_key("OPENAI_API_KEY") # Uncomment if using OpenAI
