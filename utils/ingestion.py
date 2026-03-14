@@ -1,35 +1,3 @@
-# import os
-# import pickle
-# import logging
-# import streamlit as st
-# from langchain_community.document_loaders import PyMuPDFLoader
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
-# from langchain_community.vectorstores import FAISS
-# from langchain.retrievers import ParentDocumentRetriever
-# from langchain.storage import InMemoryStore
-
-# from models.embeddings import get_embedding_model
-
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-
-# import os
-# import pickle
-# import logging
-
-# from langchain_community.document_loaders import PyMuPDFLoader
-# # Modern path for text splitters
-# from langchain_text_splitters import RecursiveCharacterTextSplitter
-# from langchain_community.vectorstores import FAISS
-# from langchain.retrievers import ParentDocumentRetriever
-# # Modern path for storage
-# from langchain_core.stores import InMemoryStore
-
-# from models.embeddings import get_embedding_model
-
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-
 import os
 import pickle
 import logging
